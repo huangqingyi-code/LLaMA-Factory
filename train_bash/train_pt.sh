@@ -1,0 +1,29 @@
+deepspeed --include localhost:0,1,2,3 --master_port=29501 src/train_bash.py \
+    --stage pt \
+    --model_name_or_path /home/qyhuang/weights/deepseek-coder-6.7b-instruct \
+    --template deepseekcoder \
+    --do_train \
+    --dataset c4_demo \
+    --finetuning_type full \
+    --output_dir /home/qyhuang/project/LLaMA-Factory/deepseekcoder_pt \
+    --overwrite_cache \
+    --overwrite_output_dir \
+    --per_device_train_batch_size 3 \
+    --per_device_eval_batch_size 2 \
+    --gradient_accumulation_steps 8 \
+    --preprocessing_num_workers 12 \
+    --lr_scheduler_type cosine_with_restarts \
+    --warmup_ratio 0.03 \
+    --logging_steps 1 \
+    --save_strategy "steps" \
+    --save_steps 5 \
+    --evaluation_strategy "no" \
+    --eval_steps 2000 \
+    --cutoff_len 8192 \
+    --learning_rate 1e-6 \
+    --max_grad_norm 1 \
+    --num_train_epochs 5 \
+    --plot_loss \
+    --fp16 true \
+    --deepspeed train_bash/deepspeed3.json \
+    --report_to "none"

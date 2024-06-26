@@ -54,7 +54,7 @@ def convert_alpaca(
     r"""
     Converts alpaca format dataset to the standard format.
     """
-    outputs = {"prompt": [], "response": [], "system": [], "tools": [], "images": []}
+    outputs = {"prompt": [], "response": [], "system": [], "tools": [], "images": [],"source":[]}
     convert_images = partial(_convert_images, dataset_attr=dataset_attr, data_args=data_args)
     for i in range(len(examples[dataset_attr.prompt])):
         prompt = []
@@ -94,6 +94,7 @@ def convert_alpaca(
 
         outputs["prompt"].append(prompt)
         outputs["response"].append(response)
+        outputs["source"].append(examples["source"][i])
         outputs["system"].append(examples[dataset_attr.system][i] if dataset_attr.system else "")
         outputs["tools"].append(examples[dataset_attr.tools][i] if dataset_attr.tools else "")
         outputs["images"].append(convert_images(examples[dataset_attr.images][i]) if dataset_attr.images else [])
@@ -209,6 +210,7 @@ def align_dataset(
         convert_func = partial(convert_sharegpt, dataset_attr=dataset_attr, data_args=data_args)
 
     column_names = list(next(iter(dataset)).keys())
+    column_names.remove("source")
     features = Features.from_dict(
         {
             "prompt": [
@@ -220,6 +222,7 @@ def align_dataset(
             "system": {"dtype": "string", "_type": "Value"},
             "tools": {"dtype": "string", "_type": "Value"},
             "images": [{"_type": "Image"}],
+            "source": {"dtype": "string", "_type": "Value"},
         }
     )
     kwargs = {}

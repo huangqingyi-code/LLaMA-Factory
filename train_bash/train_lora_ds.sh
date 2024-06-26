@@ -1,0 +1,29 @@
+deepspeed --include localhost:2,3 src/train_bash.py \
+    --stage sft \
+    --model_name_or_path /home/qyhuang/weights/Mistral/NeuralHermes-2.5-Mistral-7B \
+    --template mistral_neural\
+    --do_train \
+    --dataset dusql_train_dsl \
+    --finetuning_type lora \
+    --lora_rank 8 \
+    --lora_target q_proj,v_proj \
+    --output_dir /home/qyhuang/project/LLaMA-Efficient-Tuning/1_4_dusql_train_dsl_lora\
+    --overwrite_cache \
+    --per_device_train_batch_size 2 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 12 \
+    --preprocessing_num_workers 4 \
+    --lr_scheduler_type cosine \
+    --logging_steps 2 \
+    --save_steps 60 \
+    --eval_steps 100 \
+     --cutoff_len 4096 \
+    --learning_rate 5e-5 \
+    --max_grad_norm 0.6 \
+    --num_train_epochs 1 \
+    --evaluation_strategy "no" \
+    --plot_loss \
+    --ddp_find_unused_parameters False \
+    --overwrite_output_dir \
+    --report_to "none" \
+    --deepspeed train_bash/deepspeed2.json

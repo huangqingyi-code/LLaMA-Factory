@@ -13,6 +13,14 @@
 # limitations under the License.
 
 from llamafactory.train.tuner import run_exp
+import wandb
+import os
+
+# wandb 登录
+# api_key = "60a763e8c62e44eff794afc94793f43732caa063"
+api_key = "904d9b7af10d7a2ea3f3d1be89703a53c20deb47"
+os.environ["WANDB_PROJECT"] = "table-sft"
+wandb.login(key=api_key)
 
 
 def main():
