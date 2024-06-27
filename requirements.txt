@@ -19,3 +19,5 @@ fire
 packaging
 pyyaml
 numpy<2.0.0
+wandb
+deepspeed==0.13.5
