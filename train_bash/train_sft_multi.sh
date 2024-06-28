@@ -19,26 +19,25 @@ torchrun --nproc_per_node=$NUM_GPUS_PER_NODE --nnodes=2 --node_rank=$NODE_RANK -
     --overwrite_output_dir \
     --per_device_train_batch_size 3 \
     --per_device_eval_batch_size 3 \
-    --gradient_accumulation_steps 16 \
+    --gradient_accumulation_steps 32 \
     --preprocessing_num_workers 16 \
     --learning_rate 1e-5 \
+    --lr_scheduler_type "cosine" \
     --weight_decay 0.1 \
     --max_grad_norm 1.0 \
-    --optim_args 'min_lr_ratio=0.1' \
-    --lr_scheduler_type cosine \
     --warmup_ratio 0.01 \
-    --logging_steps 20 \
+    --logging_steps 5 \
     --save_strategy "steps" \
-    --save_steps 500 \
+    --save_steps 400 \
     --eval_strategy "steps" \
-    --val_size 0.01 \
-    --eval_steps 500 \
+    --val_size 0.02 \
+    --eval_steps 400 \
     --cutoff_len 8192 \
     --num_train_epochs 2 \
     --plot_loss \
     --bf16 true \
-    --deepspeed examples/deepspeed/ds_z2_config.json \
+    --deepspeed train_bash/deepspeed2.json \
     --report_to "wandb" \
-    --flash_attn fa2 \
+    --flash_attn "fa2" \
     --ddp_timeout 3600 \
     &> logs/training.log

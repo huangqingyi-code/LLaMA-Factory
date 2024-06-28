@@ -93,6 +93,8 @@ def split_dataset(
                 )
                 val_set = dataset.take(int(data_args.val_size))
                 train_set = dataset.skip(int(data_args.val_size))
+                val_set = cls_source(val_set)
+                train_set = dataset.remove_columns("source")
                 return {"train_dataset": train_set, "eval_dataset": val_set}
             else:
                 val_size = (

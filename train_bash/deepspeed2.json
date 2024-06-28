@@ -7,6 +7,26 @@
         "hysteresis": 2,
         "min_loss_scale": 1
     },
+    "bf16": {
+        "enabled": "auto"
+    },
+    "optimizer": {
+        "type": "AdamW",
+        "params": {
+            "lr": "auto",
+            "betas": "auto",
+            "eps": "auto",
+            "weight_decay": "auto"
+        }
+    },
+    "scheduler": {
+        "type": "WarmupLR",
+        "params": {
+            "warmup_min_lr": "auto",
+            "warmup_max_lr": "auto",
+            "warmup_num_steps": "auto"
+        }
+    },
     "zero_optimization": {
         "stage": 2,
         "offload_optimizer": {
@@ -15,22 +35,15 @@
         },
         "allgather_partitions": true,
         "allgather_bucket_size": 5e8,
-        "overlap_comm": false,
+        "overlap_comm": true,
         "reduce_scatter": true,
         "reduce_bucket_size": 5e8,
-        "contiguous_gradients": true
+        "contiguous_gradients": true,
+        "round_robin_gradients": true
     },
-    "zero_allow_untested_optimizer": true,
-    "gradient_accumulation_steps": "auto",
-    "round_robin_gradients": true,
-    "gradient_clipping": "auto",
+    "wall_clock_breakdown": false,
     "train_batch_size": "auto",
     "train_micro_batch_size_per_gpu": "auto",
-    "wall_clock_breakdown": false,
-    "use_cache": false,
-    "csv_monitor": {
-        "enabled": false,
-        "output_path": "output/ds_logs/",
-        "job_name": "sft"
-    }
+    "gradient_accumulation_steps": "auto",
+    "gradient_clipping": "auto"
 }
