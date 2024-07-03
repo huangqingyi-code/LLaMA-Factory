@@ -102,6 +102,14 @@ def preprocess_supervised_dataset(
             processor=processor,
             data_args=data_args,
         )
+        length = len(input_ids)
+        if length > data_args.cutoff_len*0.99:
+            logger.warning(
+                "Dropped lengthy example with length {} > {}.".format(
+                    length, data_args.cutoff_len*0.99
+                )
+            )
+            continue
         model_inputs["input_ids"].append(input_ids)
         model_inputs["attention_mask"].append([1] * len(input_ids))
         model_inputs["labels"].append(labels)
