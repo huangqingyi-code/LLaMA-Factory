@@ -2,9 +2,85 @@ from datasets import Dataset, load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from tqdm import tqdm
 import random
+from datasets import Dataset, concatenate_datasets, Features, Sequence, Value
+import json
 
 model_path = "/data0/pretrained-models/Qwen2-7B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
+
+
+def split_by_source(dataset: Dataset, test_size=0.02):
+    datas = {}
+    for data in tqdm(dataset):
+        sr = data["source"]
+        if not sr in datas:
+            datas[sr] = {
+                "instruction": [],
+                "input": [],
+                "output": [],
+                "system": [],
+                "history": [],
+                "source": [],
+                "nums": [],
+            }
+
+        datas[sr]["instruction"].append(data["instruction"])
+        datas[sr]["input"].append(data["input"])
+        datas[sr]["output"].append(data["output"])
+        datas[sr]["system"].append(data["system"])
+        datas[sr]["history"].append(data["history"])
+        datas[sr]["source"].append(data["source"])
+        datas[sr]["nums"].append(data["nums"])
+    ds = {}
+    features = Features(
+        {
+            "instruction": Value("string"),
+            "input": Value("string"),
+            "output": Value("string"),
+            "system": Value("string"),
+            "history": Sequence(Sequence(Value("string"))),
+            "source": Value("string"),
+            "nums": Value("int32"),
+        }
+    )
+    for key, value in datas.items():
+        ds[key] = Dataset.from_dict(value, features=features)
+
+    trains = []
+    tests = []
+    for source, d in ds.items():
+        d = d.train_test_split(test_size=test_size, seed=42)
+        # ds_train[source] = d["train"]
+        # ds_test[source] = d["test"]
+        trains.append(d["train"])
+        tests.append(d["test"])
+    ds_train = concatenate_datasets(trains)
+    ds_test = concatenate_datasets(tests)
+    ds_train = ds_train.shuffle(seed=42)
+    ds_test = ds_test.shuffle(seed=42)
+    return ds_train, ds_test
+
+
+def filter_by_tokens(examples, num_threshold=8000):
+    outputs = {
+        "instruction": [],
+        "input": [],
+        "output": [],
+        "system": [],
+        "history": [],
+        "source": [],
+        "nums": [],
+    }
+    for i in range(len(examples["instruction"])):
+        if examples["nums"][i] < num_threshold:
+            outputs["instruction"].append(examples["instruction"][i])
+            outputs["input"].append(examples["input"][i])
+            outputs["output"].append(examples["output"][i])
+            outputs["system"].append(examples["system"][i])
+            outputs["history"].append(examples["history"][i])
+            outputs["source"].append(examples["source"][i])
+            outputs["nums"].append(examples["nums"][i])
+    return outputs
 
 
 def calculate_token_num_single(example, text=False):
@@ -66,7 +142,7 @@ def calculate_token_num(examples):
     return outputs
 
 
-def merge_train_data(examples, num_threshold=8000):
+def merge_train_data(examples, num_threshold=8000, seed=42):
     res = {
         "instruction": [],
         "input": [],
@@ -110,8 +186,9 @@ def merge_train_data(examples, num_threshold=8000):
     # 随机拼凑样本
     index = 0
     rounds = [1, 2, 3, 4]
-    random.seed(42)
+    random.seed(seed)
     while index < len(res_temp["instruction"]):
+        # index不能超过数据长度
         r = random.choice(rounds)
         if r + index >= len(res_temp["instruction"]):
             r = len(res_temp["instruction"]) - index - 1
@@ -135,6 +212,7 @@ def merge_train_data(examples, num_threshold=8000):
         token_num = calculate_token_num_single(example_temp)
         example_temp["nums"] = token_num
         if token_num > num_threshold:
+            # 拼接后样本长度程度超出阈值，直接设定r=2
             r = 2
             example_temp = {}
             instructions = res_temp["instruction"][index : index + r]
@@ -162,27 +240,76 @@ def merge_train_data(examples, num_threshold=8000):
     return res
 
 
+def save_jsonl(dataset: Dataset, output_path):
+    with open(output_path, "w") as f:
+        for data in tqdm(dataset):
+            json.dump(data, f, ensure_ascii=False)
+            f.write("\n")
+
+
 if __name__ == "__main__":
     dataset = load_dataset(
         "json",
-        data_files="/data3/yss/sft_datas/0628/sft_data_merge_v4_filter.jsonl",
+        data_files="/data3/yss/sft_datas/0712/sft_data_merge_v9.jsonl",
         split="train",
     )
-    dataset = dataset.map(calculate_token_num, batched=True, num_proc=48)
     print("ori num:", len(dataset))
-    dataset1 = dataset.map(
-        merge_train_data, batched=True, remove_columns=["nums"], num_proc=48
+    # 1.计算样本token长度
+    dataset = dataset.map(calculate_token_num, batched=True, num_proc=48)
+    # 2.过滤token长度过长的样本
+    dataset = dataset.map(filter_by_tokens, batched=True, num_proc=48)
+    print("filter num:", len(dataset))
+    # 3.根据source划分train和test
+    ds_train, ds_test = split_by_source(dataset)
+    print("train:", len(ds_train), "test:", len(ds_test))
+
+    # TODO split_by_source处理后的dataset后续处理非常慢，先保存再load出来
+    save_jsonl(ds_train, "/data3/yss/sft_datas/0712/sft_data_merge_v9_train_tmp.jsonl")
+    save_jsonl(ds_test, "/data3/yss/sft_datas/0712/sft_data_merge_v9_test_tmp.jsonl")
+    ds_train = load_dataset(
+        "json",
+        data_files="/data3/yss/sft_datas/0712/sft_data_merge_v9_train_tmp.jsonl",
+        split="train",
     )
-    print("merge num:", len(dataset1))
-    dataset1.to_json(
-        "/data3/yss/sft_datas/0628/sft_data_merge_v4_filter_merge.jsonl",
+    ds_test = load_dataset(
+        "json",
+        data_files="/data3/yss/sft_datas/0712/sft_data_merge_v9_test_tmp.jsonl",
+        split="train",
+    )
+
+    dataset1 = ds_train.map(
+        lambda batch: merge_train_data(batch, num_threshold=8000, seed=42),
+        batched=True,
+        num_proc=48,
+        remove_columns=["nums"],
+    )
+    print("merge1 num:", len(dataset1))
+    dataset2 = ds_train.map(
+        lambda batch: merge_train_data(batch, num_threshold=8000, seed=0),
+        batched=True,
+        num_proc=48,
+        remove_columns=["nums"],
+    )
+    print("merge2 num:", len(dataset2))
+
+    ds_train = concatenate_datasets([dataset1, dataset2])
+    print("final train dataset:", len(ds_train))
+    print("final test dataset:", len(ds_test))
+    # ds_train.to_json(
+    #     "/data3/yss/sft_datas/0712/sft_data_merge_v9_train.jsonl",
+    #     batch_size=1000,
+    #     num_proc=48,
+    # )
+    # ds_test.to_json(
+    #     "/data3/yss/sft_datas/0712/sft_data_merge_v9_test.jsonl",
+    #     batch_size=1000,
+    #     num_proc=48,
+    # )
+
+    dataset = concatenate_datasets([ds_train, ds_test])
+    print("final dataset:", len(dataset))
+    dataset.to_json(
+        "/data3/yss/sft_datas/0712/sft_data_merge_v9_all.jsonl",
         batch_size=1000,
         num_proc=48,
     )
-    # for data in dataset1:
-    #     if len(data["history"])>2:
-    #         example = calculate_token_num_single(data,text=True)
-    #         print(example)
-    #         print("---------->",data["source"])
-    #         print("*"*100)
-    #         exit()
