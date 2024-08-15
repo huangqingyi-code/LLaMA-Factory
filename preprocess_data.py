@@ -9,7 +9,7 @@ model_path = "/data0/pretrained-models/Qwen2-7B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
 
-def split_by_source(dataset: Dataset, test_size=0.02):
+def split_by_source(dataset: Dataset, test_size=0.02, num_threshold=8000):
     datas = {}
     for data in tqdm(dataset):
         sr = data["source"]
@@ -23,14 +23,14 @@ def split_by_source(dataset: Dataset, test_size=0.02):
                 "source": [],
                 "nums": [],
             }
-
-        datas[sr]["instruction"].append(data["instruction"])
-        datas[sr]["input"].append(data["input"])
-        datas[sr]["output"].append(data["output"])
-        datas[sr]["system"].append(data["system"])
-        datas[sr]["history"].append(data["history"])
-        datas[sr]["source"].append(data["source"])
-        datas[sr]["nums"].append(data["nums"])
+        if data["nums"] < num_threshold:
+            datas[sr]["instruction"].append(data["instruction"])
+            datas[sr]["input"].append(data["input"])
+            datas[sr]["output"].append(data["output"])
+            datas[sr]["system"].append(data["system"])
+            datas[sr]["history"].append(data["history"])
+            datas[sr]["source"].append(data["source"])
+            datas[sr]["nums"].append(data["nums"])
     ds = {}
     features = Features(
         {
@@ -87,7 +87,10 @@ def calculate_token_num_single(example, text=False):
     history = example["history"]
     input = example["instruction"] + "\n" + example["input"]
     output = example["output"]
+    system = example["system"]
     messages = []
+    if len(system):
+        messages.append({"role": "system", "content": system})
     if len(history):
         for his in history:
             messages.append({"role": "user", "content": his[0]})
@@ -250,42 +253,44 @@ def save_jsonl(dataset: Dataset, output_path):
 if __name__ == "__main__":
     dataset = load_dataset(
         "json",
-        data_files="/data3/yss/sft_datas/0712/sft_data_merge_v9.jsonl",
+        data_files="/data3/yss/sft_datas/0808/sft_data_merge_v16_quality.jsonl",
         split="train",
     )
     print("ori num:", len(dataset))
     # 1.计算样本token长度
     dataset = dataset.map(calculate_token_num, batched=True, num_proc=48)
     # 2.过滤token长度过长的样本
-    dataset = dataset.map(filter_by_tokens, batched=True, num_proc=48)
-    print("filter num:", len(dataset))
+    # dataset = dataset.map(filter_by_tokens, batched=True, num_proc=48)
+    # print("filter num:", len(dataset))
     # 3.根据source划分train和test
-    ds_train, ds_test = split_by_source(dataset)
+    ds_train, ds_test = split_by_source(dataset, num_threshold=8000)
     print("train:", len(ds_train), "test:", len(ds_test))
 
     # TODO split_by_source处理后的dataset后续处理非常慢，先保存再load出来
-    save_jsonl(ds_train, "/data3/yss/sft_datas/0712/sft_data_merge_v9_train_tmp.jsonl")
-    save_jsonl(ds_test, "/data3/yss/sft_datas/0712/sft_data_merge_v9_test_tmp.jsonl")
+    train_tmp_path = "/data3/yss/sft_datas/0808/sft_data_merge_v16_quality_train.jsonl"
+    test_tmp_path = "/data3/yss/sft_datas/0808/sft_data_merge_v16_quality_test.jsonl"
+    save_jsonl(ds_train, train_tmp_path)
+    save_jsonl(ds_test, test_tmp_path)
     ds_train = load_dataset(
         "json",
-        data_files="/data3/yss/sft_datas/0712/sft_data_merge_v9_train_tmp.jsonl",
+        data_files=train_tmp_path,
         split="train",
     )
     ds_test = load_dataset(
         "json",
-        data_files="/data3/yss/sft_datas/0712/sft_data_merge_v9_test_tmp.jsonl",
+        data_files=test_tmp_path,
         split="train",
     )
 
     dataset1 = ds_train.map(
-        lambda batch: merge_train_data(batch, num_threshold=8000, seed=42),
+        lambda batch: merge_train_data(batch, num_threshold=7500, seed=42),
         batched=True,
         num_proc=48,
         remove_columns=["nums"],
     )
     print("merge1 num:", len(dataset1))
     dataset2 = ds_train.map(
-        lambda batch: merge_train_data(batch, num_threshold=8000, seed=0),
+        lambda batch: merge_train_data(batch, num_threshold=7500, seed=0),
         batched=True,
         num_proc=48,
         remove_columns=["nums"],
@@ -295,21 +300,11 @@ if __name__ == "__main__":
     ds_train = concatenate_datasets([dataset1, dataset2])
     print("final train dataset:", len(ds_train))
     print("final test dataset:", len(ds_test))
-    # ds_train.to_json(
-    #     "/data3/yss/sft_datas/0712/sft_data_merge_v9_train.jsonl",
-    #     batch_size=1000,
-    #     num_proc=48,
-    # )
-    # ds_test.to_json(
-    #     "/data3/yss/sft_datas/0712/sft_data_merge_v9_test.jsonl",
-    #     batch_size=1000,
-    #     num_proc=48,
-    # )
 
     dataset = concatenate_datasets([ds_train, ds_test])
     print("final dataset:", len(dataset))
     dataset.to_json(
-        "/data3/yss/sft_datas/0712/sft_data_merge_v9_all.jsonl",
+        "/data3/yss/sft_datas/0808/sft_data_merge_v16_quality_all.jsonl",
         batch_size=1000,
         num_proc=48,
     )

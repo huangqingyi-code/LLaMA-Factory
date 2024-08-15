@@ -1,3 +1,5 @@
+date=0814
+
 deepspeed --include localhost:0,1,2,3,4,5,6,7 --master_port=29500 src/train.py \
     --stage sft \
     --model_name_or_path /data0/pretrained-models/Qwen2-7B-Instruct \
@@ -5,7 +7,7 @@ deepspeed --include localhost:0,1,2,3,4,5,6,7 --master_port=29500 src/train.py \
     --do_train \
     --dataset all_data \
     --finetuning_type full \
-    --output_dir /data4/sft_output/qwen2-instruct-0704 \
+    --output_dir /data4/sft_output/qwen2-instruct-${date} \
     --overwrite_cache \
     --cache_dir /data4/sft_output/.cache_dir132 \
     --overwrite_output_dir \
@@ -33,4 +35,4 @@ deepspeed --include localhost:0,1,2,3,4,5,6,7 --master_port=29500 src/train.py \
     --report_to "wandb" \
     --flash_attn "fa2" \
     --ddp_timeout 3600 \
-    &> logs/training_0706.log
+    &> logs/training-${date}.log
