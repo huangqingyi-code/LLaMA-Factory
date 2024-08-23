@@ -102,12 +102,12 @@ def split_dataset(
                     if data_args.val_size > 1
                     else data_args.val_size
                 )
-                assert len(dataset) == 1785315, "dataset 数量不对！"
-                dataset_train = dataset.select(range(1747121))
-                dataset_test = dataset.select(range(1747121, len(dataset)))
-                dataset_train = dataset_train.remove_columns("source")
-                dataset_test = cls_source(dataset_test)
-                return {"train_dataset": dataset_train, "eval_dataset": dataset_test}
+                dataset = dataset.train_test_split(
+                    test_size=val_size, seed=training_args.seed
+                )
+                eval_dataset = cls_source(dataset["test"])
+                train_set = dataset["train"].remove_columns("source")
+                return {"train_dataset": dataset["train"], "eval_dataset": eval_dataset}
         else:
             if data_args.streaming:
                 dataset = dataset.shuffle(

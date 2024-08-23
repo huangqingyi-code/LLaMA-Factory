@@ -23,6 +23,10 @@ def split_by_source(dataset: Dataset, test_size=0.02, num_threshold=8000):
                 "source": [],
                 "nums": [],
             }
+        # if data["nums"] < num_threshold and data["source"] in [
+        #     "multi_turn_datas_0808.json",
+        #     "table_python_code_datas.json",
+        # ]:
         if data["nums"] < num_threshold:
             datas[sr]["instruction"].append(data["instruction"])
             datas[sr]["input"].append(data["input"])
@@ -59,28 +63,6 @@ def split_by_source(dataset: Dataset, test_size=0.02, num_threshold=8000):
     ds_train = ds_train.shuffle(seed=42)
     ds_test = ds_test.shuffle(seed=42)
     return ds_train, ds_test
-
-
-def filter_by_tokens(examples, num_threshold=8000):
-    outputs = {
-        "instruction": [],
-        "input": [],
-        "output": [],
-        "system": [],
-        "history": [],
-        "source": [],
-        "nums": [],
-    }
-    for i in range(len(examples["instruction"])):
-        if examples["nums"][i] < num_threshold:
-            outputs["instruction"].append(examples["instruction"][i])
-            outputs["input"].append(examples["input"][i])
-            outputs["output"].append(examples["output"][i])
-            outputs["system"].append(examples["system"][i])
-            outputs["history"].append(examples["history"][i])
-            outputs["source"].append(examples["source"][i])
-            outputs["nums"].append(examples["nums"][i])
-    return outputs
 
 
 def calculate_token_num_single(example, text=False):
@@ -124,7 +106,10 @@ def calculate_token_num(examples):
         history = examples["history"][i]
         input = examples["instruction"][i] + "\n" + examples["input"][i]
         output = examples["output"][i]
+        system = examples["system"][i]
         messages = []
+        if len(system):
+            messages.append({"role": "system", "content": system})
         if len(history):
             for his in history:
                 messages.append({"role": "user", "content": his[0]})
@@ -253,9 +238,13 @@ def save_jsonl(dataset: Dataset, output_path):
 if __name__ == "__main__":
     dataset = load_dataset(
         "json",
-        data_files="/data3/yss/sft_datas/0808/sft_data_merge_v16_quality.jsonl",
+        data_files="/data3/yss/sft_datas/0817/sft_data_merge_v17_quality.jsonl",
         split="train",
     )
+    # import numpy as np
+    # uniq = np.unique(dataset["source"])
+    # print(uniq)
+    # exit()
     print("ori num:", len(dataset))
     # 1.计算样本token长度
     dataset = dataset.map(calculate_token_num, batched=True, num_proc=48)
@@ -265,10 +254,16 @@ if __name__ == "__main__":
     # 3.根据source划分train和test
     ds_train, ds_test = split_by_source(dataset, num_threshold=8000)
     print("train:", len(ds_train), "test:", len(ds_test))
+    
+    # 仅仅table数据
+    # ds_table = concatenate_datasets([ds_train, ds_test])
+    # print("dataset table",len(ds_table))
+    # save_jsonl(ds_table, "/data3/yss/sft_datas/0808/sft_data_merge_v16_quality_table.jsonl")
+    # exit()
 
     # TODO split_by_source处理后的dataset后续处理非常慢，先保存再load出来
-    train_tmp_path = "/data3/yss/sft_datas/0808/sft_data_merge_v16_quality_train.jsonl"
-    test_tmp_path = "/data3/yss/sft_datas/0808/sft_data_merge_v16_quality_test.jsonl"
+    train_tmp_path = "/data3/yss/sft_datas/0817/sft_data_merge_v17_quality_train.jsonl"
+    test_tmp_path = "/data3/yss/sft_datas/0817/sft_data_merge_v17_quality_test.jsonl"
     save_jsonl(ds_train, train_tmp_path)
     save_jsonl(ds_test, test_tmp_path)
     ds_train = load_dataset(
@@ -304,7 +299,7 @@ if __name__ == "__main__":
     dataset = concatenate_datasets([ds_train, ds_test])
     print("final dataset:", len(dataset))
     dataset.to_json(
-        "/data3/yss/sft_datas/0808/sft_data_merge_v16_quality_all.jsonl",
+        "/data3/yss/sft_datas/0817/sft_data_merge_v17_quality_all.jsonl",
         batch_size=1000,
         num_proc=48,
     )
