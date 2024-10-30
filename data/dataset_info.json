@@ -1,6 +1,58 @@
 {
   "all_data": {
-    "file_name": "/data3/yss/sft_datas/0628/sft_data_merge_v4_filter_merge.jsonl"
+    "file_name": "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_all.jsonl",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "system": "system",
+      "history": "history"
+    }
+  },
+  "test_data": {
+    "file_name": "/data4/yss/sft_datas/1018/extend_datas_only_math_gsm8k.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "system": "system",
+      "history": "history"
+    }
+  },
+  "all_data_sharegpt": {
+    "file_name": "/data3/yss/sft_datas/0912/sft_data_merge_v18_quality_filtered_sharegpt_trans_trains.jsonl",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "system": "system",
+      "tools": "tools"
+    }
+  },
+  "table_data": {
+    "file_name": "/data4/code822/tableqa/table_zjuici_train_lf_.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "system": "system",
+      "history": "history"
+    }
+  },
+  "general_data": {
+    "file_name": "/data3/yss/sft_datas/0817/sft_data_merge_v17_quality_general.jsonl",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "system": "system",
+      "history": "history"
+    }
+  },
+  "pt_data": {
+    "file_name": "/data0/datasets/pretrain_data/v0626.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
   },
   "small_data": {
     "file_name": "/data0/yss/small_data.jsonl"
