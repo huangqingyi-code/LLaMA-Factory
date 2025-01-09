@@ -4,10 +4,10 @@ MASTER_PORT=29500
 NODE_RANK=0
 NUM_GPUS_PER_NODE=8
 
-# export NCCL_SOCKET_IFNAME="ens10f0np0"
-# export NCCL_DEBUG="WARN"
-# export PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:256"
-# export NCCL_P2P_LEVEL="NVL"
+export PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:256"
+export NCCL_DEBUG="WARN"  # INFO 或 "WARN" 或 "ERROR" 以减少输出量
+export NCCL_SOCKET_IFNAME="ens10f0np0"  # 替换为你的网络接口名
+export NCCL_P2P_LEVEL="NVL"  # NVLINK
 
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 

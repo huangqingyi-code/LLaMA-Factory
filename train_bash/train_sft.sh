@@ -1,3 +1,8 @@
+export PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:256"
+export NCCL_DEBUG="WARN"  # INFO 或 "WARN" 或 "ERROR" 以减少输出量
+export NCCL_SOCKET_IFNAME="ens10f0np0"  # 替换为你的网络接口名
+export NCCL_P2P_LEVEL="NVL"  # NVLINK
+
 date=1018
 
 deepspeed --include localhost:0,1,2,3,4,5,6,7 --master_port=29500 src/train.py \

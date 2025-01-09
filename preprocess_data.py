@@ -245,64 +245,37 @@ def read_jsonl(file_path):
 
 
 if __name__ == "__main__":
-    datas = []
-    with open(
-        "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered.jsonl"
-    ) as f:
-        for line in f:
-            data = json.loads(line)
-            flag=True
+    data_file = (
+        "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_trans.jsonl"
+    )
+    train_save_path = (
+        "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_train.jsonl"
+    )
+    test_save_path = (
+        "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_test.jsonl"
+    )
+    all_save_path = (
+        "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_all.jsonl"
+    )
 
-            history = data["history"]
-            if len(history):
-                for his in history:
-                    if len(his)!=2:
-                        flag=False
-            if flag:
-                datas.append(
-                    {
-                        "system": data["system"],
-                        "instruction": data["instruction"],
-                        "input": data["input"],
-                        "output": data["output"],
-                        "history": data["history"],
-                        "source": data["source"],
-                    }
-                )
-    save_jsonl(datas, "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_trans.jsonl")
-    # exit()
     dataset = load_dataset(
         "json",
-        data_files="/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_trans.jsonl",
+        data_files=data_file,
         split="train",
     )
-    # import numpy as np
-    # uniq = np.unique(dataset["source"])
-    # print(uniq)
-    # exit()
+
     print("ori num:", len(dataset))
     # 1.计算样本token长度
     dataset = dataset.map(calculate_token_num, batched=True, num_proc=48)
-    # 2.过滤token长度过长的样本
-    # dataset = dataset.map(filter_by_tokens, batched=True, num_proc=48)
-    # print("filter num:", len(dataset))
-    # 3.根据source划分train和test
+
+    # 2.根据source划分train和test以及根据token长度过滤数据
     ds_train, ds_test = split_by_source(dataset, num_threshold=7800)
     print("train:", len(ds_train), "test:", len(ds_test))
 
-    # 仅仅table数据
-    # ds_table = concatenate_datasets([ds_train, ds_test])
-    # print("dataset table",len(ds_table))
-    # save_jsonl(ds_table, "/data3/yss/sft_datas/0808/sft_data_merge_v16_quality_table.jsonl")
-    # exit()
-
     # TODO split_by_source处理后的dataset后续处理非常慢，先保存再load出来
-    train_tmp_path = (
-        "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_tranin.jsonl"
-    )
-    test_tmp_path = (
-        "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_test.jsonl"
-    )
+    train_tmp_path = train_save_path
+    test_tmp_path = test_save_path
+
     save_jsonl(ds_train, train_tmp_path)
     save_jsonl(ds_test, test_tmp_path)
     ds_train = load_dataset(
@@ -316,6 +289,7 @@ if __name__ == "__main__":
         split="train",
     )
 
+    # 将2个epoch短样本数据分别合并在一起
     dataset1 = ds_train.map(
         lambda batch: merge_train_data(batch, num_threshold=7800, seed=42),
         batched=True,
@@ -331,6 +305,7 @@ if __name__ == "__main__":
     )
     print("merge2 num:", len(dataset2))
 
+    # 两个epoch的数据合并在一起
     ds_train = concatenate_datasets([dataset1, dataset2])
     print("final train dataset:", len(ds_train))
     print("final test dataset:", len(ds_test))
@@ -338,7 +313,17 @@ if __name__ == "__main__":
     dataset = concatenate_datasets([ds_train, ds_test])
     print("final dataset:", len(dataset))
     dataset.to_json(
-        "/data4/yss/sft_datas/1016/sft_data_merge_v20_quality_filtered_all.jsonl",
+        all_save_path,
+        batch_size=1000,
+        num_proc=48,
+    )
+    ds_train.to_json(
+        train_save_path,
+        batch_size=1000,
+        num_proc=48,
+    )
+    ds_test.to_json(
+        test_save_path,
         batch_size=1000,
         num_proc=48,
     )
